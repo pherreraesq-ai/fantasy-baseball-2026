@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fantasy Baseball 2026 | HR & K Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-dark: #0d2b1a;
+    --green-mid: #1a472a;
+    --green-bright: #2d8653;
+    --green-glow: #3ddc84;
+    --blue-dark: #0d1b2b;
+    --blue-mid: #1a3047;
+    --blue-bright: #2d6098;
+    --blue-glow: #5bb8f5;
+    --gold: #f5c842;
+    --cream: #f0ece0;
+    --white: #ffffff;
+    --grey-light: rgba(255,255,255,0.06);
+    --grey-mid: rgba(255,255,255,0.12);
+    --grey-text: rgba(255,255,255,0.5);
+    --bg: #080f0b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── BACKGROUND FIELD TEXTURE ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(45,134,83,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(29,77,161,0.1) 0%, transparent 50%),
+      repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(255,255,255,0.015) 60px),
+      repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(255,255,255,0.015) 60px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* ── HEADER ── */
+  header {
+    padding: 40px 20px 0;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .league-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--green-mid), var(--green-bright));
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 2px;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 9vw, 96px);
+    line-height: 0.9;
+    letter-spacing: 2px;
+    background: linear-gradient(180deg, #ffffff 0%, #a8d5b5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--grey-text);
+    letter-spacing: 1px;
+    margin-bottom: 32px;
+  }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--grey-text);
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green-glow);
+    box-shadow: 0 0 8px var(--green-glow);
+    animation: pulse 2s ease-in-out infinite;
+    display: inline-block;
+    margin-right: 6px;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .status-item { display: flex; align-items: center; gap: 6px; }
+
+  /* ── TAB NAV ── */
+  .tab-nav {
+    display: flex;
+    gap: 4px;
+    background: var(--grey-light);
+    border: 1px solid var(--grey-mid);
+    border-radius: 8px;
+    padding: 4px;
+    margin-bottom: 32px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .tab-btn {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1.5px;
+    padding: 10px 32px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    color: var(--grey-text);
+  }
+
+  .tab-btn.active-hr {
+    background: linear-gradient(135deg, var(--green-mid), var(--green-bright));
+    color: var(--gold);
+    box-shadow: 0 4px 20px rgba(45,134,83,0.4);
+  }
+
+  .tab-btn.active-k {
+    background: linear-gradient(135deg, var(--blue-mid), var(--blue-bright));
+    color: var(--blue-glow);
+    box-shadow: 0 4px 20px rgba(45,96,152,0.4);
+  }
+
+  .tab-btn:hover:not(.active-hr):not(.active-k) {
+    color: var(--white);
+    background: var(--grey-mid);
+  }
+
+  /* ── LEADERBOARD ── */
+  .leaderboard { display: flex; flex-direction: column; gap: 8px; margin-bottom: 48px; }
+
+  .lb-row {
+    display: grid;
+    grid-template-columns: 52px 1fr 90px 90px;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-radius: 8px;
+    background: var(--grey-light);
+    border: 1px solid var(--grey-mid);
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lb-row::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    border-radius: 3px 0 0 3px;
+  }
+
+  .lb-row.hr-theme::before { background: var(--green-glow); }
+  .lb-row.k-theme::before  { background: var(--blue-glow); }
+
+  .lb-row:hover { background: var(--grey-mid); transform: translateX(3px); }
+
+  .lb-row.rank-1 { border-color: rgba(245,200,66,0.4); background: rgba(245,200,66,0.06); }
+  .lb-row.rank-2 { border-color: rgba(192,192,192,0.3); }
+  .lb-row.rank-3 { border-color: rgba(205,127,50,0.3); }
+
+  .rank-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--grey-text);
+    text-align: center;
+  }
+
+  .rank-1 .rank-num { color: var(--gold); }
+  .rank-2 .rank-num { color: #c0c0c0; }
+  .rank-3 .rank-num { color: #cd7f32; }
+
+  .team-info { display: flex; flex-direction: column; gap: 2px; }
+
+  .team-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.5px;
+    line-height: 1;
+  }
+
+  .manager-name {
+    font-size: 11px;
+    color: var(--grey-text);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  .stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    text-align: right;
+    line-height: 1;
+  }
+
+  .hr-theme .stat-num { color: var(--green-glow); }
+  .k-theme  .stat-num { color: var(--blue-glow); }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--grey-text);
+    text-align: right;
+    letter-spacing: 1px;
+  }
+
+  /* ── TEAM ROSTERS ── */
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--grey-mid);
+  }
+
+  .teams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+
+  .team-card {
+    background: var(--grey-light);
+    border: 1px solid var(--grey-mid);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+
+  .team-card:hover { border-color: rgba(255,255,255,0.2); }
+
+  .team-card-header {
+    padding: 14px 18px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .hr-theme .team-card-header { background: linear-gradient(135deg, rgba(26,71,42,0.8), rgba(45,134,83,0.4)); border-bottom: 1px solid rgba(61,220,132,0.2); }
+  .k-theme  .team-card-header { background: linear-gradient(135deg, rgba(26,48,71,0.8), rgba(45,96,152,0.4)); border-bottom: 1px solid rgba(91,184,245,0.2); }
+
+  .team-card-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+  }
+
+  .team-card-manager {
+    font-size: 10px;
+    color: var(--grey-text);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .team-card-total {
+    text-align: right;
+  }
+
+  .team-card-total-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+  }
+
+  .hr-theme .team-card-total-num { color: var(--green-glow); }
+  .k-theme  .team-card-total-num { color: var(--blue-glow); }
+
+  .team-card-total-label {
+    font-size: 9px;
+    color: var(--grey-text);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  .player-list { padding: 8px 0; }
+
+  .player-row {
+    display: grid;
+    grid-template-columns: 1fr 52px;
+    align-items: center;
+    padding: 7px 18px;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+  }
+
+  .player-row:last-child { border-bottom: none; }
+  .player-row:hover { background: var(--grey-light); }
+
+  .player-name-text { font-size: 13px; color: rgba(255,255,255,0.85); }
+  .player-pos { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--grey-text); margin-top: 1px; }
+
+  .player-stat {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    text-align: right;
+    line-height: 1;
+  }
+
+  .hr-theme .player-stat { color: var(--green-glow); }
+  .k-theme  .player-stat { color: var(--blue-glow); }
+
+  /* ── LOADING / ERROR ── */
+  .loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    gap: 16px;
+  }
+
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--grey-mid);
+    border-top-color: var(--green-glow);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--grey-text); letter-spacing: 1px; }
+
+  .error-msg {
+    background: rgba(255,80,80,0.1);
+    border: 1px solid rgba(255,80,80,0.3);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 13px;
+    color: #ff9090;
+    font-family: 'DM Mono', monospace;
+    text-align: center;
+    margin: 20px 0;
+  }
+
+  .refresh-btn {
+    background: var(--grey-mid);
+    border: 1px solid var(--grey-mid);
+    color: var(--white);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 1px;
+    padding: 8px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 auto;
+  }
+
+  .refresh-btn:hover { background: var(--green-bright); border-color: var(--green-glow); }
+
+  /* ── NEXT UPDATE ── */
+  .next-update {
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--grey-text);
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--grey-mid);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .lb-row { grid-template-columns: 40px 1fr 70px 70px; }
+    .stat-num { font-size: 28px; }
+  }
+
+  /* tab panels */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* season start note */
+  .season-note {
+    background: rgba(245,200,66,0.08);
+    border: 1px solid rgba(245,200,66,0.2);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="league-badge">⚾ Fantasy Baseball League 2026</div>
+  <h1>HR & K<br>TRACKER</h1>
+  <p class="subtitle">8 MANAGERS · SEASON STATS · AUTO-UPDATED WEEKLY</p>
+
+  <div class="status-bar">
+    <div class="status-item"><span class="status-dot"></span><span id="live-status">Loading stats...</span></div>
+    <div class="status-item">📅 Season started Mar 25, 2026</div>
+    <div class="status-item">🔄 Updates every Sunday 10pm PST</div>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn active-hr" onclick="switchTab('hr')">⚾ Home Runs</button>
+    <button class="tab-btn" onclick="switchTab('k')">🔥 Strikeouts</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- HR TAB -->
+  <div id="tab-hr" class="tab-panel active">
+    <div class="season-note">⚡ Season started March 25 — stats update every Sunday at 10pm PST</div>
+    <div class="leaderboard" id="hr-leaderboard">
+      <div class="loading-screen"><div class="spinner"></div><p class="loading-text">Fetching HR stats from MLB...</p></div>
+    </div>
+    <div class="section-title" style="color: var(--green-glow)">TEAM ROSTERS</div>
+    <div class="teams-grid" id="hr-teams"></div>
+  </div>
+
+  <!-- K TAB -->
+  <div id="tab-k" class="tab-panel">
+    <div class="season-note">⚡ Season started March 25 — stats update every Sunday at 10pm PST</div>
+    <div class="leaderboard" id="k-leaderboard">
+      <div class="loading-screen"><div class="spinner"></div><p class="loading-text">Fetching K stats from MLB...</p></div>
+    </div>
+    <div class="section-title" style="color: var(--blue-glow)">TEAM ROSTERS</div>
+    <div class="teams-grid" id="k-teams"></div>
+  </div>
+
+  <div class="next-update" id="next-update-msg"></div>
+</div>
+
+<script>
+// ── ROSTER DATA ────────────────────────────────────────────────
+const TEAMS = [
+  {
+    team: "All Rise", manager: "Pedro",
+    batters: [
+      {name:"José Ramírez", pos:"3B", id:608070},
+      {name:"Julio Rodríguez", pos:"OF", id:677594},
+      {name:"Jazz Chisholm Jr.", pos:"2B", id:665750},
+      {name:"Trea Turner", pos:"SS", id:607208},
+      {name:"Rafael Devers", pos:"1B", id:646240},
+      {name:"Shea Langeliers", pos:"C", id:669127},
+      {name:"Tyler Soderstrom", pos:"1B", id:686939},
+      {name:"Ben Rice", pos:"C", id:701538},
+      {name:"Alex Bregman", pos:"3B", id:608324},
+    ],
+    pitchers: [
+      {name:"Chris Sale", pos:"SP", id:519242},
+      {name:"Max Fried", pos:"SP", id:608331},
+      {name:"Framber Valdez", pos:"SP", id:664285},
+      {name:"Luis Castillo", pos:"SP", id:622491},
+    ]
+  },
+  {
+    team: "Barry Bongs", manager: "Jason",
+    batters: [
+      {name:"Shohei Ohtani", pos:"OF", id:660271},
+      {name:"Pete Crow-Armstrong", pos:"OF", id:682998},
+      {name:"Matt Olson", pos:"1B", id:621566},
+      {name:"Brice Turang", pos:"2B", id:669742},
+      {name:"Geraldo Perdomo", pos:"SS", id:661388},
+      {name:"William Contreras", pos:"C", id:661388},
+      {name:"Teoscar Hernández", pos:"OF", id:606192},
+      {name:"Matt Chapman", pos:"3B", id:656305},
+      {name:"Kyle Stowers", pos:"OF", id:681082},
+    ],
+    pitchers: [
+      {name:"Yoshinobu Yamamoto", pos:"SP", id:808967},
+      {name:"Cristopher Sánchez", pos:"SP", id:656308},
+      {name:"Jacob deGrom", pos:"SP", id:594798},
+      {name:"Dylan Cease", pos:"SP", id:656302},
+    ]
+  },
+  {
+    team: "Pico Boys All Stars", manager: "Danny",
+    batters: [
+      {name:"Kyle Schwarber", pos:"OF", id:656941},
+      {name:"Cal Raleigh", pos:"C", id:663728},
+      {name:"Brent Rooker", pos:"OF", id:667670},
+      {name:"Jarren Duran", pos:"OF", id:680776},
+      {name:"Josh Naylor", pos:"1B", id:647304},
+      {name:"Austin Riley", pos:"3B", id:663586},
+      {name:"Byron Buxton", pos:"OF", id:621439},
+      {name:"Luke Keaschall", pos:"2B", id:694192},
+      {name:"Jeremy Peña", pos:"SS", id:665161},
+    ],
+    pitchers: [
+      {name:"Tarik Skubal", pos:"SP", id:669373},
+      {name:"Logan Gilbert", pos:"SP", id:669302},
+      {name:"Freddy Peralta", pos:"SP", id:642547},
+      {name:"Nick Lodolo", pos:"SP", id:672515},
+    ]
+  },
+  {
+    team: "Steroided UP", manager: "Miguel Munoz",
+    batters: [
+      {name:"Aaron Judge", pos:"OF", id:592450},
+      {name:"Vladimir Guerrero Jr.", pos:"1B", id:665489},
+      {name:"Mookie Betts", pos:"SS", id:605141},
+      {name:"Bryce Harper", pos:"1B", id:547180},
+      {name:"Ketel Marte", pos:"2B", id:606466},
+      {name:"Cody Bellinger", pos:"OF", id:641355},
+      {name:"Maikel Garcia", pos:"2B", id:672710},
+      {name:"Will Smith", pos:"C", id:669257},
+      {name:"George Springer", pos:"OF", id:594940},
+    ],
+    pitchers: [
+      {name:"Tyler Glasnow", pos:"SP", id:607192},
+      {name:"Jacob Misiorowski", pos:"SP", id:694297},
+      {name:"Cam Schlittler", pos:"SP", id:700538},
+      {name:"Tatsuya Imai", pos:"SP", id:808968},
+    ]
+  },
+  {
+    team: "Wife Beaters vs Skenes", manager: "Marco",
+    batters: [
+      {name:"Bobby Witt Jr.", pos:"SS", id:677951},
+      {name:"Gunnar Henderson", pos:"SS", id:683002},
+      {name:"Pete Alonso", pos:"1B", id:624413},
+      {name:"Zach Neto", pos:"SS", id:694192},
+      {name:"Yordan Alvarez", pos:"OF", id:670541},
+      {name:"Riley Greene", pos:"OF", id:682985},
+      {name:"Bo Bichette", pos:"SS", id:666182},
+      {name:"Hunter Goodman", pos:"C", id:680986},
+      {name:"Eugenio Suárez", pos:"3B", id:553993},
+    ],
+    pitchers: [
+      {name:"Garrett Crochet", pos:"SP", id:661403},
+      {name:"Cole Ragans", pos:"SP", id:664062},
+      {name:"Nick Pivetta", pos:"SP", id:601713},
+      {name:"Sonny Gray", pos:"SP", id:543243},
+    ]
+  },
+  {
+    team: "The Rizzler", manager: "Luis Herrera",
+    batters: [
+      {name:"Juan Soto", pos:"OF", id:665742},
+      {name:"Ronald Acuña Jr.", pos:"OF", id:660670},
+      {name:"Corbin Carroll", pos:"OF", id:682998},
+      {name:"Nick Kurtz", pos:"1B", id:701538},
+      {name:"Manny Machado", pos:"3B", id:592518},
+      {name:"Roman Anthony", pos:"OF", id:694304},
+      {name:"CJ Abrams", pos:"SS", id:682928},
+      {name:"Trevor Story", pos:"SS", id:596115},
+      {name:"Luis Robert Jr.", pos:"OF", id:673357},
+    ],
+    pitchers: [
+      {name:"Hunter Brown", pos:"SP", id:686613},
+      {name:"Joe Ryan", pos:"SP", id:664238},
+      {name:"Kyle Bradish", pos:"SP", id:669062},
+      {name:"Kevin Gausman", pos:"SP", id:592332},
+    ]
+  },
+  {
+    team: "Ohtani's Interpreter", manager: "Jesse",
+    batters: [
+      {name:"Fernando Tatis Jr.", pos:"OF", id:665487},
+      {name:"Junior Caminero", pos:"3B", id:701538},
+      {name:"James Wood", pos:"OF", id:694192},
+      {name:"Freddie Freeman", pos:"1B", id:518692},
+      {name:"Corey Seager", pos:"SS", id:608369},
+      {name:"Michael Harris II", pos:"OF", id:671739},
+      {name:"Christian Yelich", pos:"OF", id:592885},
+      {name:"Willy Adames", pos:"SS", id:642715},
+      {name:"Salvador Perez", pos:"C", id:521692},
+    ],
+    pitchers: [
+      {name:"Paul Skenes", pos:"SP", id:694973},
+      {name:"Bryan Woo", pos:"SP", id:694148},
+      {name:"George Kirby", pos:"SP", id:669923},
+      {name:"Shohei Ohtani (Pitcher)", pos:"SP", id:660271},
+    ]
+  },
+  {
+    team: "The Pitcher", manager: "Cristian",
+    batters: [
+      {name:"Elly De La Cruz", pos:"SS", id:682829},
+      {name:"Kyle Tucker", pos:"OF", id:663656},
+      {name:"Jackson Chourio", pos:"OF", id:694192},
+      {name:"Francisco Lindor", pos:"SS", id:596019},
+      {name:"Wyatt Langford", pos:"OF", id:701538},
+      {name:"Jackson Merrill", pos:"OF", id:694197},
+      {name:"Vinnie Pasquantino", pos:"1B", id:686469},
+      {name:"Randy Arozarena", pos:"OF", id:668227},
+      {name:"Nico Hoerner", pos:"2B", id:663538},
+    ],
+    pitchers: [
+      {name:"Logan Webb", pos:"SP", id:657277},
+      {name:"Jesús Luzardo", pos:"SP", id:666200},
+      {name:"Nolan McLean", pos:"SP", id:701538},
+      {name:"Eury Pérez", pos:"SP", id:694631},
+    ]
+  },
+];
+
+// ── STATE ──────────────────────────────────────────────────────
+let currentTab = 'hr';
+let statsCache = {};
+let lastUpdated = null;
+
+// ── TAB SWITCH ────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => { b.className = 'tab-btn'; });
+  document.getElementById('tab-' + tab).classList.add('active');
+  const btn = document.querySelectorAll('.tab-btn')[tab === 'hr' ? 0 : 1];
+  btn.classList.add('active-' + tab);
+}
+
+// ── FETCH PLAYER STATS ────────────────────────────────────────
+async function fetchPlayerStats(playerId, group) {
+  const url = `https://statsapi.mlb.com/api/v1/people/${playerId}/stats?stats=season&season=2026&group=${group}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const splits = data?.stats?.[0]?.splits;
+    if (!splits || splits.length === 0) return null;
+    return splits[0].stat;
+  } catch {
+    return null;
+  }
+}
+
+// ── LOAD ALL STATS ────────────────────────────────────────────
+async function loadAllStats() {
+  document.getElementById('live-status').textContent = 'Fetching live MLB stats...';
+
+  const allPlayers = [];
+  TEAMS.forEach(t => {
+    t.batters.forEach(p => allPlayers.push({...p, teamIdx: TEAMS.indexOf(t), type:'batter'}));
+    t.pitchers.forEach(p => allPlayers.push({...p, teamIdx: TEAMS.indexOf(t), type:'pitcher'}));
+  });
+
+  // Fetch in parallel batches
+  const BATCH = 10;
+  for (let i = 0; i < allPlayers.length; i += BATCH) {
+    const batch = allPlayers.slice(i, i + BATCH);
+    await Promise.all(batch.map(async (player) => {
+      const group = player.type === 'batter' ? 'hitting' : 'pitching';
+      const stat = await fetchPlayerStats(player.id, group);
+      const key = `${player.id}-${group}`;
+      statsCache[key] = stat;
+    }));
+  }
+
+  lastUpdated = new Date();
+  document.getElementById('live-status').textContent = `Stats updated ${lastUpdated.toLocaleDateString('en-US', {month:'short', day:'numeric'})}`;
+  renderAll();
+}
+
+// ── GET STAT VALUE ────────────────────────────────────────────
+function getHR(player) {
+  const stat = statsCache[`${player.id}-hitting`];
+  return stat?.homeRuns ?? 0;
+}
+
+function getK(player) {
+  const stat = statsCache[`${player.id}-pitching`];
+  return stat?.strikeOuts ?? 0;
+}
+
+// ── RENDER LEADERBOARD ────────────────────────────────────────
+function renderLeaderboard(containerId, statFn, players, theme, label) {
+  const el = document.getElementById(containerId);
+
+  const ranked = TEAMS.map(t => ({
+    team: t.team,
+    manager: t.manager,
+    total: players(t).reduce((sum, p) => sum + statFn(p), 0)
+  })).sort((a,b) => b.total - a.total);
+
+  el.innerHTML = ranked.map((row, i) => `
+    <div class="lb-row ${theme}-theme rank-${i+1}">
+      <div class="rank-num">${i+1}</div>
+      <div class="team-info">
+        <div class="team-name">${row.team}</div>
+        <div class="manager-name">${row.manager}</div>
+      </div>
+      <div>
+        <div class="stat-num">${row.total}</div>
+        <div class="stat-label">${label}</div>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:flex-end;">
+        ${i === 0 ? '<span style="font-size:22px">🏆</span>' : i === 1 ? '<span style="font-size:18px">🥈</span>' : i === 2 ? '<span style="font-size:18px">🥉</span>' : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── RENDER TEAM CARDS ─────────────────────────────────────────
+function renderTeams(containerId, playerList, statFn, theme, label) {
+  const el = document.getElementById(containerId);
+
+  const sorted = [...TEAMS].sort((a,b) => {
+    const totA = playerList(a).reduce((s,p) => s+statFn(p), 0);
+    const totB = playerList(b).reduce((s,p) => s+statFn(p), 0);
+    return totB - totA;
+  });
+
+  el.innerHTML = sorted.map(t => {
+    const players = playerList(t);
+    const total = players.reduce((s,p) => s+statFn(p), 0);
+    const playerRows = players.map(p => `
+      <div class="player-row">
+        <div>
+          <div class="player-name-text">${p.name}</div>
+          <div class="player-pos">${p.pos}</div>
+        </div>
+        <div class="player-stat">${statFn(p)}</div>
+      </div>
+    `).join('');
+
+    return `
+      <div class="team-card ${theme}-theme">
+        <div class="team-card-header ${theme}-theme">
+          <div>
+            <div class="team-card-name">${t.team}</div>
+            <div class="team-card-manager">${t.manager}</div>
+          </div>
+          <div class="team-card-total">
+            <div class="team-card-total-num">${total}</div>
+            <div class="team-card-total-label">${label}</div>
+          </div>
+        </div>
+        <div class="player-list">${playerRows}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────
+function renderAll() {
+  renderLeaderboard('hr-leaderboard', getHR, t => t.batters, 'hr', 'HRs');
+  renderLeaderboard('k-leaderboard',  getK,  t => t.pitchers, 'k',  'Ks');
+  renderTeams('hr-teams',   t => t.batters,  getHR, 'hr', 'HRs');
+  renderTeams('k-teams',    t => t.pitchers, getK,  'k',  'Ks');
+
+  // Next Sunday 10pm PST
+  const now = new Date();
+  const nextSun = new Date(now);
+  nextSun.setDate(now.getDate() + ((7 - now.getDay()) % 7 || 7));
+  nextSun.setHours(22, 0, 0, 0);
+  document.getElementById('next-update-msg').textContent =
+    `Next auto-update: Sunday ${nextSun.toLocaleDateString('en-US',{month:'short',day:'numeric'})} at 10:00 PM PST`;
+}
+
+// ── AUTO REFRESH ──────────────────────────────────────────────
+function scheduleAutoRefresh() {
+  const now = new Date();
+  // Convert to PST (UTC-8)
+  const pstOffset = -8 * 60;
+  const pstNow = new Date(now.getTime() + (now.getTimezoneOffset() + pstOffset) * 60000);
+  const isSunday = pstNow.getDay() === 0;
+  const isAfter10pm = pstNow.getHours() >= 22;
+
+  if (isSunday && isAfter10pm) {
+    if (!lastUpdated || (now - lastUpdated) > 3600000) {
+      loadAllStats();
+    }
+  }
+
+  // Check again in 1 hour
+  setTimeout(scheduleAutoRefresh, 3600000);
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+loadAllStats();
+scheduleAutoRefresh();
+</script>
+</body>
+</html>
